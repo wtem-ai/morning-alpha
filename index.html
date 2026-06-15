@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>美股晨报 · Morning Alpha</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111418;
+    --surface2: #181c22;
+    --border: #1e2530;
+    --accent: #00d4aa;
+    --accent2: #3b82f6;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --up: #22c55e;
+    --down: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Inter', 'Noto Sans SC', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  .logo span { color: var(--muted); font-weight: 400; }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .update-time {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .update-time b { color: var(--accent); }
+
+  .refresh-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .refresh-btn:hover { opacity: 0.8; }
+  .refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* LAYOUT */
+  .main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+
+  .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+  .col-span-2 { grid-column: span 2; }
+  .col-span-3 { grid-column: span 3; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+  }
+
+  .card-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* MARKET INDICATORS */
+  .index-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; margin-bottom: 20px; }
+
+  .index-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 14px;
+  }
+  .index-name {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .index-val {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+  .index-chg {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+  .neutral { color: var(--warn); }
+
+  /* MACRO STRIP */
+  .macro-strip {
+    display: grid;
+    grid-template-columns: repeat(6,1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .macro-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .macro-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .macro-val {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .macro-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* BRIEFING CONTENT */
+  .briefing-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+
+  .briefing-content {
+    font-size: 13.5px;
+    line-height: 1.8;
+    color: #c8d3e0;
+  }
+  .briefing-content p { margin-bottom: 10px; }
+  .briefing-content .highlight { color: var(--accent); font-weight: 500; }
+  .briefing-content .danger-text { color: var(--danger); }
+  .briefing-content .warn-text { color: var(--warn); }
+  .briefing-content ul { padding-left: 20px; }
+  .briefing-content li { margin-bottom: 5px; }
+
+  /* TRADE RECS */
+  .rec-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .rec-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .rec-card.buy::before { background: var(--up); }
+  .rec-card.sell::before { background: var(--down); }
+  .rec-card.watch::before { background: var(--warn); }
+
+  .rec-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .rec-ticker {
+    font-family: var(--mono);
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+  }
+  .rec-name {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .rec-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+  }
+  .rec-badge.buy { background: rgba(34,197,94,0.15); color: var(--up); border: 1px solid rgba(34,197,94,0.3); }
+  .rec-badge.sell { background: rgba(239,68,68,0.15); color: var(--down); border: 1px solid rgba(239,68,68,0.3); }
+  .rec-badge.watch { background: rgba(245,158,11,0.15); color: var(--warn); border: 1px solid rgba(245,158,11,0.3); }
+
+  .rec-levels {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 8px;
+    margin: 12px 0;
+    padding: 10px;
+    background: var(--bg);
+    border-radius: 4px;
+  }
+  .rec-level-item { text-align: center; }
+  .rec-level-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .rec-level-val {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .rec-thesis {
+    font-size: 12.5px;
+    color: #94a3b8;
+    line-height: 1.7;
+  }
+  .rec-confidence {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .confidence-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .confidence-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+  }
+
+  /* NEWS FEED */
+  .news-item {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .news-item:last-child { border-bottom: none; }
+  .news-source {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    padding: 2px 6px;
+    border-radius: 2px;
+    background: var(--surface2);
+    color: var(--accent);
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .news-text {
+    font-size: 12.5px;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+  .news-time {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* LOADING */
+  .loading-overlay {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .loading-overlay.active { display: flex; }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* ERROR */
+  .error-box {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 6px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--danger);
+    display: none;
+  }
+  .error-box.active { display: block; }
+
+  /* STATUS DOT */
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--up);
+    animation: pulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* TICKER TAPE */
+  .ticker-wrap {
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 6px 0;
+  }
+  .ticker-inner {
+    display: flex;
+    gap: 40px;
+    animation: ticker 60s linear infinite;
+    white-space: nowrap;
+    width: max-content;
+  }
+  @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+  .ticker-item {
+    font-family: var(--mono);
+    font-size: 11px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .ticker-sym { color: var(--muted); }
+  .ticker-price { color: var(--text); font-weight: 500; }
+
+  /* RESPONSIVE */
+  @media (max-width: 1100px) {
+    .index-grid { grid-template-columns: repeat(3,1fr); }
+    .macro-strip { grid-template-columns: repeat(3,1fr); }
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    .main { padding: 16px; }
+    .topbar { padding: 12px 16px; }
+    .index-grid { grid-template-columns: repeat(2,1fr); }
+    .macro-strip { grid-template-columns: repeat(2,1fr); }
+    .grid-2, .grid-4 { grid-template-columns: 1fr; }
+    .col-span-2 { grid-column: span 1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">MORNING<span>ALPHA</span> <span style="font-size:10px;color:var(--muted)">美股晨报</span></div>
+  <div class="topbar-right">
+    <div style="display:flex;align-items:center;gap:6px">
+      <div class="status-dot" id="statusDot" style="background:var(--muted)"></div>
+      <div class="update-time">更新时间: <b id="updateTime">--:--</b> ET</div>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="loadAll()">⟳ 获取晨报</button>
+  </div>
+</div>
+
+<!-- TICKER TAPE -->
+<div class="ticker-wrap">
+  <div class="ticker-inner" id="tickerInner">
+    <!-- duplicated for seamless loop -->
+    <span class="ticker-item"><span class="ticker-sym">SPY</span><span class="ticker-price" id="t-spy">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">QQQ</span><span class="ticker-price" id="t-qqq">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">NVDA</span><span class="ticker-price" id="t-nvda">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">AAPL</span><span class="ticker-price" id="t-aapl">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">TSLA</span><span class="ticker-price" id="t-tsla">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">MSFT</span><span class="ticker-price" id="t-msft">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">META</span><span class="ticker-price" id="t-meta">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">AMZN</span><span class="ticker-price" id="t-amzn">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">US10Y</span><span class="ticker-price up" id="t-10y">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">VIX</span><span class="ticker-price warn" id="t-vix">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">BTC</span><span class="ticker-price" id="t-btc">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">WTI</span><span class="ticker-price" id="t-oil">—</span></span>
+    <!-- duplicate for seamless loop -->
+    <span class="ticker-item"><span class="ticker-sym">SPY</span><span class="ticker-price">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">QQQ</span><span class="ticker-price">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">NVDA</span><span class="ticker-price">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">AAPL</span><span class="ticker-price">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">TSLA</span><span class="ticker-price">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">MSFT</span><span class="ticker-price">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">META</span><span class="ticker-price">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">AMZN</span><span class="ticker-price">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">US10Y</span><span class="ticker-price up">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">VIX</span><span class="ticker-price warn">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">BTC</span><span class="ticker-price">—</span></span>
+    <span class="ticker-item"><span class="ticker-sym">WTI</span><span class="ticker-price">—</span></span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- INDEX ROW -->
+  <div class="section-label">主要指数 · Key Indices</div>
+  <div class="index-grid" id="indexGrid">
+    <div class="index-card"><div class="index-name">S&P 500</div><div class="index-val" id="idx-spx">—</div><div class="index-chg neutral" id="idx-spx-c">—</div></div>
+    <div class="index-card"><div class="index-name">NASDAQ</div><div class="index-val" id="idx-ndx">—</div><div class="index-chg neutral" id="idx-ndx-c">—</div></div>
+    <div class="index-card"><div class="index-name">DOW JONES</div><div class="index-val" id="idx-dow">—</div><div class="index-chg neutral" id="idx-dow-c">—</div></div>
+    <div class="index-card"><div class="index-name">RUSSELL 2000</div><div class="index-val" id="idx-rut">—</div><div class="index-chg neutral" id="idx-rut-c">—</div></div>
+    <div class="index-card"><div class="index-name">VIX 恐慌指数</div><div class="index-val" id="idx-vix">—</div><div class="index-chg neutral" id="idx-vix-c">—</div></div>
+  </div>
+
+  <!-- MACRO STRIP -->
+  <div class="section-label">宏观指标 · Macro Dashboard</div>
+  <div class="macro-strip">
+    <div class="macro-item"><div class="macro-label">US 10Y 国债</div><div class="macro-val" id="m-10y">—</div><div class="macro-sub" id="m-10y-s">联储政策基准</div></div>
+    <div class="macro-item"><div class="macro-label">美元指数 DXY</div><div class="macro-val" id="m-dxy">—</div><div class="macro-sub" id="m-dxy-s">外汇强弱</div></div>
+    <div class="macro-item"><div class="macro-label">黄金 Gold</div><div class="macro-val" id="m-gold">—</div><div class="macro-sub" id="m-gold-s">避险情绪</div></div>
+    <div class="macro-item"><div class="macro-label">原油 WTI</div><div class="macro-val" id="m-oil">—</div><div class="macro-sub" id="m-oil-s">能源成本</div></div>
+    <div class="macro-item"><div class="macro-label">BTC 比特币</div><div class="macro-val" id="m-btc">—</div><div class="macro-sub" id="m-btc-s">风险偏好</div></div>
+    <div class="macro-item"><div class="macro-label">联邦基金利率</div><div class="macro-val" id="m-ffr">—</div><div class="macro-sub" id="m-ffr-s">美联储当前</div></div>
+  </div>
+
+  <!-- BRIEFING + NEWS -->
+  <div class="grid-2" style="margin-bottom:20px;">
+
+    <!-- MORNING BRIEFING -->
+    <div>
+      <div class="section-label">AI 晨报分析 · Morning Briefing</div>
+      <div class="briefing-block">
+        <div id="briefingLoading" class="loading-overlay">
+          <div class="spinner"></div>
+          <div class="loading-text">正在抓取全球财经新闻...</div>
+        </div>
+        <div id="briefingError" class="error-box"></div>
+        <div id="briefingContent" class="briefing-content">
+          <p style="color:var(--muted);font-family:var(--mono);font-size:12px;">点击「获取晨报」加载今日 AI 分析报告</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEWS FEED -->
+    <div>
+      <div class="section-label">要闻速递 · News Feed</div>
+      <div class="briefing-block" style="padding:12px 18px;">
+        <div id="newsFeedLoading" class="loading-overlay">
+          <div class="spinner"></div>
+          <div class="loading-text">加载新闻...</div>
+        </div>
+        <div id="newsFeedError" class="error-box"></div>
+        <div id="newsFeed">
+          <p style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:10px 0;">点击「获取晨报」加载</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TRADE RECS -->
+  <div class="section-label">今日交易推荐 · Top 3 Trade Ideas</div>
+  <div id="recsLoading" class="loading-overlay" style="padding:20px 0; display:none; align-items:center; gap:12px;">
+    <div class="spinner"></div>
+    <div class="loading-text">AI 正在筛选最佳标的...</div>
+  </div>
+  <div id="recsError" class="error-box"></div>
+  <div id="recsGrid" class="grid-3">
+    <div class="rec-card buy" style="opacity:0.3">
+      <div class="rec-header"><div><div class="rec-ticker">???</div><div class="rec-name">等待 AI 分析</div></div><span class="rec-badge buy">做多</span></div>
+      <div class="rec-levels"><div class="rec-level-item"><div class="rec-level-label">入场价</div><div class="rec-level-val">—</div></div><div class="rec-level-item"><div class="rec-level-label">止盈</div><div class="rec-level-val">—</div></div><div class="rec-level-item"><div class="rec-level-label">止损</div><div class="rec-level-val">—</div></div></div>
+      <div class="rec-thesis">请点击「获取晨报」生成今日推荐</div>
+    </div>
+    <div class="rec-card sell" style="opacity:0.3">
+      <div class="rec-header"><div><div class="rec-ticker">???</div><div class="rec-name">等待 AI 分析</div></div><span class="rec-badge sell">做空</span></div>
+      <div class="rec-levels"><div class="rec-level-item"><div class="rec-level-label">入场价</div><div class="rec-level-val">—</div></div><div class="rec-level-item"><div class="rec-level-label">止盈</div><div class="rec-level-val">—</div></div><div class="rec-level-item"><div class="rec-level-label">止损</div><div class="rec-level-val">—</div></div></div>
+      <div class="rec-thesis">请点击「获取晨报」生成今日推荐</div>
+    </div>
+    <div class="rec-card watch" style="opacity:0.3">
+      <div class="rec-header"><div><div class="rec-ticker">???</div><div class="rec-name">等待 AI 分析</div></div><span class="rec-badge watch">观察</span></div>
+      <div class="rec-levels"><div class="rec-level-item"><div class="rec-level-label">入场价</div><div class="rec-level-val">—</div></div><div class="rec-level-item"><div class="rec-level-label">止盈</div><div class="rec-level-val">—</div></div><div class="rec-level-item"><div class="rec-level-label">止损</div><div class="rec-level-val">—</div></div></div>
+      <div class="rec-thesis">请点击「获取晨报」生成今日推荐</div>
+    </div>
+  </div>
+
+  <!-- DISCLAIMER -->
+  <div style="margin-top:28px; padding:12px 16px; border:1px solid var(--border); border-radius:4px; font-size:11px; color:var(--muted); line-height:1.6;">
+    ⚠️ <strong style="color:var(--warn)">风险声明</strong>：本页所有内容由 AI 自动生成，仅供参考，不构成任何投资建议。股票交易存在重大风险，请自行判断并咨询专业顾问。过往表现不代表未来收益。
+  </div>
+
+</div>
+
+<script>
+const API_URL = "https://api.anthropic.com/v1/messages";
+const MODEL = "claude-sonnet-4-6";
+const TODAY = new Date().toLocaleDateString("zh-CN", { year:"numeric", month:"long", day:"numeric", weekday:"long" });
+
+// ─── Fetch market data via Claude web search ───────────────────────────────
+async function fetchMarketData() {
+  const prompt = `今天是 ${TODAY}。请使用 web_search 工具搜索以下实时金融数据，然后以纯 JSON 格式返回（不要有任何 markdown 或说明文字）：
+
+搜索以下内容并返回 JSON：
+{
+  "spx": "S&P 500 当前指数点位（数字字符串）",
+  "spx_chg": "涨跌幅 如 +0.52%",
+  "ndx": "NASDAQ 综合指数",
+  "ndx_chg": "涨跌幅",
+  "dow": "道琼斯工业指数",
+  "dow_chg": "涨跌幅",
+  "rut": "Russell 2000",
+  "rut_chg": "涨跌幅",
+  "vix": "VIX 恐慌指数",
+  "vix_chg": "涨跌幅",
+  "us10y": "美国10年期国债收益率 如 4.42%",
+  "dxy": "美元指数 DXY",
+  "gold": "黄金现货价格 美元/盎司",
+  "oil": "WTI 原油价格",
+  "btc": "比特币价格 美元",
+  "fed_rate": "当前联邦基金利率目标区间 如 4.25-4.50%",
+  "nvda": "NVIDIA 股价",
+  "aapl": "Apple 股价",
+  "tsla": "Tesla 股价",
+  "msft": "Microsoft 股价",
+  "meta": "Meta 股价",
+  "amzn": "Amazon 股价"
+}
+
+只返回 JSON，不加任何解释。`;
+
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 1000,
+      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  const data = await res.json();
+  const text = data.content.map(b => b.type === "text" ? b.text : "").join("").trim();
+  const clean = text.replace(/```json|```/g, "").trim();
+  return JSON.parse(clean);
+}
+
+// ─── Fetch briefing + news + recs ─────────────────────────────────────────
+async function fetchBriefingAndRecs() {
+  const prompt = `今天是 ${TODAY}，美国东部时间早上 8:30。
+
+你是一位专业的华尔街研究员。请用 web_search 工具搜索今天早上最新的金融新闻，包括：
+- 美联储最新动态和官员发言
+- 美国 10 年期国债收益率变动原因
+- 标普500、纳斯达克昨日/今日盘前走势
+- AI、芯片（英伟达/AMD/台积电）最新消息
+- 科技股重要新闻（苹果/微软/Meta/谷歌）
+- 能源价格变动（石油/天然气）
+- 全球政经风险（中美关系、地缘政治）
+- 今日重要财经数据发布（CPI/PPI/就业/PMI等）
+- 华尔街日报、彭博、路透社、CNBC 今晨头条
+
+然后请返回以下 JSON 格式（纯 JSON，无 markdown）：
+
+{
+  "briefing": "500-600字的中文晨报分析，用<p>段落分隔，重要数据用<span class='highlight'>标注，风险警示用<span class='danger-text'>，注意事项用<span class='warn-text'>",
+  "news": [
+    { "source": "媒体名称缩写（如WSJ/BBG/CNBC/Reuters）", "text": "新闻摘要（中文，50字内）", "time": "时间如 6:20am" },
+    ... 共8条
+  ],
+  "recs": [
+    {
+      "ticker": "股票代码",
+      "name": "公司全名（中文）",
+      "direction": "buy 或 sell 或 watch",
+      "entry": "建议入场价位",
+      "target": "止盈目标价",
+      "stop": "止损价位",
+      "thesis": "交易逻辑（中文，80字内）",
+      "confidence": 75
+    },
+    ... 共3个推荐
+  ]
+}
+
+只返回 JSON，不加任何说明。`;
+
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 2000,
+      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  const data = await res.json();
+  const text = data.content.map(b => b.type === "text" ? b.text : "").join("").trim();
+  const clean = text.replace(/```json|```/g, "").trim();
+  return JSON.parse(clean);
+}
+
+// ─── Render functions ──────────────────────────────────────────────────────
+function colorClass(chg) {
+  if (!chg) return "neutral";
+  return chg.startsWith("+") ? "up" : chg.startsWith("-") ? "down" : "neutral";
+}
+
+function renderMarket(d) {
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || "—"; };
+  const setClass = (id, chg) => { const el = document.getElementById(id); if (el) el.className = "index-chg " + colorClass(chg); };
+
+  set("idx-spx", d.spx); set("idx-spx-c", d.spx_chg); setClass("idx-spx-c", d.spx_chg);
+  set("idx-ndx", d.ndx); set("idx-ndx-c", d.ndx_chg); setClass("idx-ndx-c", d.ndx_chg);
+  set("idx-dow", d.dow); set("idx-dow-c", d.dow_chg); setClass("idx-dow-c", d.dow_chg);
+  set("idx-rut", d.rut); set("idx-rut-c", d.rut_chg); setClass("idx-rut-c", d.rut_chg);
+  set("idx-vix", d.vix); set("idx-vix-c", d.vix_chg); setClass("idx-vix-c", d.vix_chg);
+
+  set("m-10y", d.us10y); set("m-dxy", d.dxy); set("m-gold", "$" + d.gold);
+  set("m-oil", "$" + d.oil); set("m-btc", "$" + d.btc); set("m-ffr", d.fed_rate);
+
+  // Ticker
+  const tp = (id, val, chg) => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = val + (chg ? " " + chg : ""); el.className = "ticker-price " + colorClass(chg); }
+  };
+  tp("t-spy", d.spx, d.spx_chg); tp("t-qqq", d.ndx, d.ndx_chg);
+  tp("t-nvda", d.nvda, ""); tp("t-aapl", d.aapl, "");
+  tp("t-tsla", d.tsla, ""); tp("t-msft", d.msft, "");
+  tp("t-meta", d.meta, ""); tp("t-amzn", d.amzn, "");
+  document.getElementById("t-10y").textContent = d.us10y;
+  document.getElementById("t-vix").textContent = d.vix;
+  document.getElementById("t-btc").textContent = "$" + d.btc;
+  document.getElementById("t-oil").textContent = "$" + d.oil;
+}
+
+function renderBriefing(briefing) {
+  document.getElementById("briefingContent").innerHTML = briefing;
+}
+
+function renderNews(news) {
+  const feed = document.getElementById("newsFeed");
+  feed.innerHTML = news.map(n => `
+    <div class="news-item">
+      <span class="news-source">${n.source}</span>
+      <span class="news-text">${n.text}</span>
+      <span class="news-time">${n.time}</span>
+    </div>
+  `).join("");
+}
+
+function renderRecs(recs) {
+  const grid = document.getElementById("recsGrid");
+  grid.innerHTML = recs.map(r => `
+    <div class="rec-card ${r.direction}">
+      <div class="rec-header">
+        <div>
+          <div class="rec-ticker">${r.ticker}</div>
+          <div class="rec-name">${r.name}</div>
+        </div>
+        <span class="rec-badge ${r.direction}">${r.direction === "buy" ? "做多" : r.direction === "sell" ? "做空" : "观察"}</span>
+      </div>
+      <div class="rec-levels">
+        <div class="rec-level-item"><div class="rec-level-label">入场价</div><div class="rec-level-val">$${r.entry}</div></div>
+        <div class="rec-level-item"><div class="rec-level-label">止盈</div><div class="rec-level-val" style="color:var(--up)">$${r.target}</div></div>
+        <div class="rec-level-item"><div class="rec-level-label">止损</div><div class="rec-level-val" style="color:var(--down)">$${r.stop}</div></div>
+      </div>
+      <div class="rec-thesis">${r.thesis}</div>
+      <div class="rec-confidence">
+        <span>置信度</span>
+        <div class="confidence-bar"><div class="confidence-fill" style="width:${r.confidence}%"></div></div>
+        <span>${r.confidence}%</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+// ─── MAIN LOAD ─────────────────────────────────────────────────────────────
+async function loadAll() {
+  const btn = document.getElementById("refreshBtn");
+  const dot = document.getElementById("statusDot");
+  btn.disabled = true;
+  btn.textContent = "加载中...";
+  dot.style.background = "var(--warn)";
+
+  // Show loaders
+  document.getElementById("briefingLoading").classList.add("active");
+  document.getElementById("briefingContent").innerHTML = "";
+  document.getElementById("briefingError").classList.remove("active");
+  document.getElementById("newsFeedLoading").classList.add("active");
+  document.getElementById("newsFeed").innerHTML = "";
+  document.getElementById("recsLoading").style.display = "flex";
+  document.getElementById("recsError").classList.remove("active");
+  document.getElementById("recsGrid").innerHTML = "";
+
+  try {
+    // Parallel fetch
+    const [market, briefingData] = await Promise.all([
+      fetchMarketData().catch(e => { console.error("Market data error:", e); return null; }),
+      fetchBriefingAndRecs()
+    ]);
+
+    if (market) renderMarket(market);
+    renderBriefing(briefingData.briefing);
+    renderNews(briefingData.news);
+    renderRecs(briefingData.recs);
+
+    // Update time
+    const now = new Date();
+    const et = now.toLocaleTimeString("en-US", { hour:"2-digit", minute:"2-digit", timeZone:"America/New_York" });
+    document.getElementById("updateTime").textContent = et;
+    dot.style.background = "var(--up)";
+
+  } catch (err) {
+    console.error(err);
+    const msg = "加载失败：" + err.message;
+    document.getElementById("briefingError").textContent = msg;
+    document.getElementById("briefingError").classList.add("active");
+    document.getElementById("recsError").textContent = msg;
+    document.getElementById("recsError").classList.add("active");
+    dot.style.background = "var(--down)";
+  } finally {
+    document.getElementById("briefingLoading").classList.remove("active");
+    document.getElementById("newsFeedLoading").classList.remove("active");
+    document.getElementById("recsLoading").style.display = "none";
+    btn.disabled = false;
+    btn.textContent = "⟳ 刷新晨报";
+  }
+}
+
+// Auto-load on open
+window.addEventListener("load", () => {
+  // Check if it's around 8:30am ET – auto load
+  const etHour = new Date().toLocaleString("en-US", { hour:"numeric", hour12:false, timeZone:"America/New_York" });
+  // Always allow manual load; just show ready state
+  document.getElementById("statusDot").style.background = "var(--muted)";
+});
+</script>
+</body>
+</html>
